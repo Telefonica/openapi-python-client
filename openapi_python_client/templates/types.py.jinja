@@ -1,7 +1,8 @@
 """ Contains some shared types for properties """
-from typing import BinaryIO, Generic, MutableMapping, Optional, TextIO, Tuple, TypeVar, Union
+from typing import Any, BinaryIO, Callable, Generic, MutableMapping, Optional, TextIO, Tuple, TypeVar, Union
 
 import attr
+import httpx
 
 
 class Unset:
@@ -38,7 +39,25 @@ class Response(Generic[T]):
     status_code: int
     content: bytes
     headers: MutableMapping[str, str]
-    parsed: Optional[T]
+    parsed: Callable[[], T]
 
 
-__all__ = ["File", "Response"]
+class ApiHTTPError(Exception):
+    ...
+
+
+class ApiRequestError(ApiHTTPError):
+    def __init__(self, request: httpx.Request) -> None:
+        super(ApiHTTPError, self).__init__()
+        self.request = request
+
+
+class ApiHTTPStatusError(ApiHTTPError):
+    def __init__(self, response: httpx.Response, msg: str = "") -> None:
+        super(ApiHTTPError, self).__init__()
+        self.status_code = response.status_code
+        self.response = response
+        self.msg = msg
+
+
+__all__ = ["ApiHTTPError", "ApiRequestError", "ApiHTTPStatusError", "File", "Response", "UNSET", "Unset"]

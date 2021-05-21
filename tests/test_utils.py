@@ -16,8 +16,8 @@ def test_snake_case_from_pascal_with_acronyms():
 
 
 def test_snake_case_from_pascal_with_numbers():
-    assert utils.snake_case("Response200") == "response_200"
-    assert utils.snake_case("Response200WithContent") == "response_200_with_content"
+    assert utils.snake_case("Response200") == "response200"
+    assert utils.snake_case("Response200WithContent") == "response200_with_content"
 
 
 def test_snake_case_from_pascal():

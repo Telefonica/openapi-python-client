@@ -1,0 +1,45 @@
+from typing import Any, Dict, List, Optional, Union, cast
+
+from ...client import AsyncClient, SyncClient
+{% for endpoint in endpoint_collection.endpoints %}
+from . import {{ endpoint.name | snakecase }}
+{% for relative in endpoint.relative_imports %}
+{{ relative }}
+{% endfor %}
+{% endfor %}
+from ...types import Response, UNSET
+
+{% from "endpoint_macros.py.jinja" import header_params, cookie_params, query_params, json_body, arguments, client, kwargs, parse_response, get_2xx_response_types %}
+
+{% for is_async in [False, True] %}
+class {{ 'Async' if is_async else 'Sync' }}{{ utils.pascal_case(endpoint_collection.tag) }}Api:
+    def __init__(self, client: {{ 'Async' if is_async else 'Sync' }}Client) -> None:
+        self._client = client
+
+    {% for endpoint in endpoint_collection.endpoints %}
+    {% set ns = namespace(return_string="None") %}
+    {{ get_2xx_response_types(ns, endpoint) }}
+    {% set return_string = ns.return_string %}
+    {% set parsed_responses = (endpoint.responses | length > 0) %}
+    {{ 'async ' if is_async else '' }}def {{ endpoint.name | snakecase }}(
+        self,
+        {{ arguments(endpoint, include_client=False) | indent(8) }}
+    ) -> {{ return_string }}:
+        """ {{ endpoint.description }} """
+        client = self._client
+        return {{ 'await ' if is_async else '' }}{{ endpoint.name | snakecase }}.{{ 'asyncio' if is_async else 'sync' }}(
+            {{ kwargs(endpoint) }}
+        )
+
+    {{ 'async ' if is_async else '' }}def {{ endpoint.name | snakecase }}_detailed(
+        self,
+        {{ arguments(endpoint, include_client=False) | indent(8) }}
+    ) -> Response[{{ return_string }}]:
+        """ {{ endpoint.description }} """
+        client = self._client
+        return {{ endpoint.name | snakecase }}.{{ 'asyncio' if is_async else 'sync' }}_detailed(
+            {{ kwargs(endpoint) }}
+        )
+
+    {% endfor %}
+{% endfor %}

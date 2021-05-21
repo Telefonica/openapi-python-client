@@ -12,8 +12,10 @@ def sanitize(value: str) -> str:
 
 
 def split_words(value: str) -> List[str]:
-    """Split a string on non-capital letters and known delimiters"""
-    value = " ".join(re.split("([A-Z]?[a-z]+)", value))
+    """
+    Split a string on non-capital letters with numerical suffix and known delimiters.
+    """
+    value = " ".join(re.split("([A-Z]?[a-z0-9]+)", value))
     return re.findall(rf"[^{delimiters}]+", value)
 
 
