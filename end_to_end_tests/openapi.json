@@ -812,6 +812,7 @@
           {
             "name": "param",
             "in": "path",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -823,6 +824,56 @@
           }
         }
       }
+    },
+    "/multiple-path-parameters/{param4}/{param2}/{param1}/{param3}": {
+      "description": "Test that multiple path parameters are ordered by appearance in path",
+      "get": {
+        "tags": [
+          "parameters"
+        ],
+        "operationId": "multiple_path_parameters",
+        "parameters": [
+          {
+            "name": "param1",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "param2",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "param4",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "param3",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ]
     }
   },
   "components": {

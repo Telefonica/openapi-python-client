@@ -1,33 +1,31 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 import httpx
 
 from ...client import Client
-from ...types import UNSET, Response, Unset
+from ...types import Response
 
 
 def _get_kwargs(
-    param_path: str,
+    param_4: str,
+    param_2: int,
+    param_1: str,
+    param_3: int,
     *,
     client: Client,
-    param_query: Union[Unset, str] = UNSET,
 ) -> Dict[str, Any]:
-    url = "{}/same-name-multiple-locations/{param}".format(client.base_url, param=param_path)
+    url = "{}/multiple-path-parameters/{param4}/{param2}/{param1}/{param3}".format(
+        client.base_url, param4=param_4, param2=param_2, param1=param_1, param3=param_3
+    )
 
     headers: Dict[str, Any] = client.get_headers()
     cookies: Dict[str, Any] = client.get_cookies()
-
-    params: Dict[str, Any] = {
-        "param": param_query,
-    }
-    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     return {
         "url": url,
         "headers": headers,
         "cookies": cookies,
         "timeout": client.get_timeout(),
-        "params": params,
     }
 
 
@@ -41,15 +39,19 @@ def _build_response(*, response: httpx.Response) -> Response[None]:
 
 
 def sync_detailed(
-    param_path: str,
+    param_4: str,
+    param_2: int,
+    param_1: str,
+    param_3: int,
     *,
     client: Client,
-    param_query: Union[Unset, str] = UNSET,
 ) -> Response[None]:
     kwargs = _get_kwargs(
-        param_path=param_path,
+        param_4=param_4,
+        param_2=param_2,
+        param_1=param_1,
+        param_3=param_3,
         client=client,
-        param_query=param_query,
     )
 
     response = httpx.get(
@@ -60,15 +62,19 @@ def sync_detailed(
 
 
 async def asyncio_detailed(
-    param_path: str,
+    param_4: str,
+    param_2: int,
+    param_1: str,
+    param_3: int,
     *,
     client: Client,
-    param_query: Union[Unset, str] = UNSET,
 ) -> Response[None]:
     kwargs = _get_kwargs(
-        param_path=param_path,
+        param_4=param_4,
+        param_2=param_2,
+        param_1=param_1,
+        param_3=param_3,
         client=client,
-        param_query=param_query,
     )
 
     async with httpx.AsyncClient() as _client:
