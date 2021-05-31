@@ -1,31 +1,35 @@
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response, UNSET{% if endpoint.multipart_body_class %}, File {% endif %}
+from ...client import AsyncClient, SyncClient
+from ...types import UNSET, ApiRequestError, ApiResponseError, ApiHTTPStatusError, Response{% if endpoint.multipart_body_class %}, File {% endif %}
 
 {% for relative in endpoint.relative_imports %}
 {{ relative }}
 {% endfor %}
 
-{% from "endpoint_macros.py.jinja" import header_params, cookie_params, query_params, json_body, arguments, client, kwargs, parse_response %}
+{% from "endpoint_macros.py.jinja" import header_params, cookie_params, query_params, json_body, arguments, client, kwargs, parse_response, get_2xx_response_types %}
 
-{% set return_string = endpoint.response_type() %}
-{% set parsed_responses = (endpoint.responses | length > 0) and return_string != "None" %}
+{% set ns = namespace(responses2xx=None, return_string="None") %}
+{{ get_2xx_response_types(ns, endpoint) }}
+
+{% set return_string = ns.return_string %}
+{% set responses2xx = ns.responses2xx %}
+{% set parsed_responses = (endpoint.responses | length > 0) %}
 
 def _get_kwargs(
     {{ arguments(endpoint) | indent(4) }}
 ) -> Dict[str, Any]:
     url = "{}{{ endpoint.path }}".format(
-        client.base_url
+        client.base_url.rstrip("/")
         {%- for parameter in endpoint.path_parameters -%}
         ,{{parameter.name}}={{parameter.python_name}}
         {%- endfor -%}
     )
 
-    headers: Dict[str, Any] = client.get_headers()
-    cookies: Dict[str, Any] = client.get_cookies()
+    headers: Dict[str, Any] = {}
+    cookies: Dict[str, Any] = {}
 
     {{ header_params(endpoint) | indent(4) }}
 
@@ -49,7 +53,6 @@ def _get_kwargs(
         "url": url,
         "headers": headers,
         "cookies": cookies,
-        "timeout": client.get_timeout(),
         {% if endpoint.form_body_class %}
         "data": form_data.to_dict(),
         {% elif endpoint.multipart_body_class %}
@@ -65,18 +68,44 @@ def _get_kwargs(
 
 
 {% if parsed_responses %}
-def _parse_response(*, response: httpx.Response) -> Optional[{{ return_string }}]:
-    {% for response in endpoint.responses %}
-    if response.status_code == {{ response.status_code }}:
-        {% if response.prop.template %}
-            {% from "property_templates/" + response.prop.template import construct %}
-        {{ construct(response.prop, response.source) | indent(8) }}
-        {% else %}
-        {{ response.prop.python_name }} = {{ response.source }}
-        {% endif %}
-        return {{ response.prop.python_name }}
-    {% endfor %}
-    return None
+def _parse_response(*, response: httpx.Response) -> Callable[[], {{ return_string }}]:
+    parsed_response: Union[UNSET, {{ return_string }}] = UNSET
+
+    def parse_response() -> {{ return_string }}:
+        nonlocal parsed_response
+        if parsed_response != UNSET:
+            return parsed_response
+        if 200 <= response.status_code < 300:
+            {% if responses2xx|length %}
+            try:
+                {% for response in responses2xx %}
+                if response.status_code == {{ response.status_code }}:
+                    {% if response.prop.template %}
+                        {% from "property_templates/" + response.prop.template import construct %}
+                    {% set ind = 12 if response.prop.template != "list_property.py.jinja" else 20 %}
+                    {{ construct(response.prop, response.source) | indent(ind) }}
+                    parsed_response = {{ response.prop.name }}
+                    {% else %}
+                    parsed_response = {{ response.source }}
+                    {% endif %}
+                {% endfor %}
+            except Exception as e:
+                raise ApiResponseError(
+                    "Unable to convert response to data model. Maybe you are using old client version."
+                    f"Error: {str(e)}",
+                    response=response,
+                )
+            {% endif %}
+            if parsed_response == UNSET:
+                raise ApiResponseError(
+                    f"Unmapped http code '{response.status_code}'. Maybe you are using old client version",
+                    response=response,
+                )
+            return parsed_response
+
+        raise ApiHTTPStatusError(response=response)
+
+    return parse_response
 {% endif %}
 
 
@@ -88,7 +117,7 @@ def _build_response(*, response: httpx.Response) -> Response[{{ return_string }}
         {% if parsed_responses %}
         parsed=_parse_response(response=response),
         {% else %}
-        parsed=None,
+        parsed= lambda _: None,
         {% endif %}
     )
 
@@ -99,45 +128,47 @@ def sync_detailed(
     kwargs = _get_kwargs(
         {{ kwargs(endpoint) }}
     )
-
-    response = httpx.{{ endpoint.method }}(
-        **kwargs,
-    )
-
+    try:
+        response = client.get_http_client().{{ endpoint.method }}(
+            **kwargs,
+        )
+    except httpx.RequestError as e:
+        raise ApiRequestError(str(e), request=e.request)
     return _build_response(response=response)
 
 {% if parsed_responses %}
 def sync(
     {{ arguments(endpoint) | indent(4) }}
-) -> Optional[{{ return_string }}]:
+) -> {{ return_string }}:
     """ {{ endpoint.description }} """
 
     return sync_detailed(
         {{ kwargs(endpoint) }}
-    ).parsed
+    ).parsed()
 {% endif %}
 
 async def asyncio_detailed(
-    {{ arguments(endpoint) | indent(4) }}
+    {{ arguments(endpoint, async_client=True) | indent(4) }}
 ) -> Response[{{ return_string }}]:
     kwargs = _get_kwargs(
         {{ kwargs(endpoint) }}
     )
-
-    async with httpx.AsyncClient() as _client:
-        response = await _client.{{ endpoint.method }}(
-            **kwargs
+    try:
+        response = await client.get_http_client().{{ endpoint.method }}(
+                **kwargs
         )
+    except httpx.RequestError as e:
+        raise ApiRequestError(str(e), request=e.request)
 
     return _build_response(response=response)
 
 {% if parsed_responses %}
 async def asyncio(
-    {{ arguments(endpoint) | indent(4) }}
-) -> Optional[{{ return_string }}]:
+    {{ arguments(endpoint, async_client=True) | indent(4) }}
+) -> {{ return_string }}:
     """ {{ endpoint.description }} """
 
     return (await asyncio_detailed(
         {{ kwargs(endpoint) }}
-    )).parsed
+    )).parsed()
 {% endif %}

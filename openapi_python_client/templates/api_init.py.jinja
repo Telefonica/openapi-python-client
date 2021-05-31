@@ -1,1 +1,17 @@
 """ Contains methods for accessing the API """
+
+from ..client import AsyncClient, SyncClient
+{% for is_async in [False, True] %}
+{% for tag in endpoint_collections_by_tag %}
+from .{{ tag | snakecase }} import {{ 'Async' if is_async else 'Sync' }}{{ utils.pascal_case(tag) }}Api
+{% endfor %}
+{% endfor %}
+
+
+{% for is_async in [False, True] %}
+class {{ 'Async' if is_async else 'Sync' }}Api:
+      def __init__(self, client: {{ 'Async' if is_async else 'Sync' }}Client) -> None:
+          {% for tag in endpoint_collections_by_tag %}
+          self.{{ tag | snakecase }} = {{ 'Async' if is_async else 'Sync' }}{{ utils.pascal_case(tag) }}Api(client)
+          {% endfor %}
+{% endfor %}
