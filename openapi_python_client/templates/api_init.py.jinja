@@ -14,4 +14,8 @@ class {{ 'Async' if is_async else 'Sync' }}Api:
           {% for tag in endpoint_collections_by_tag %}
           self.{{ tag | snakecase }} = {{ 'Async' if is_async else 'Sync' }}{{ utils.pascal_case(tag) }}Api(client)
           {% endfor %}
+          self._client = client
+
+      def get_client(self) -> {{ 'Async' if is_async else 'Sync' }}Client:
+          return self._client
 {% endfor %}
