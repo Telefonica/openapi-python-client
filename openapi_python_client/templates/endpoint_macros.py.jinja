@@ -85,17 +85,14 @@ params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 {% endmacro %}
 
 {# The all the kwargs passed into an endpoint (and variants thereof)) #}
-{% macro arguments(endpoint) %}
+{% macro arguments(endpoint, include_client=True, async_client=False) %}
 {# path parameters #}
 {% for parameter in endpoint.path_parameters.values() %}
 {{ parameter.to_string() }},
 {% endfor %}
 *,
-{# Proper client based on whether or not the endpoint requires authentication #}
-{% if endpoint.requires_security %}
-client: AuthenticatedClient,
-{% else %}
-client: Client,
+{% if include_client %}
+client: {{ 'Async' if async_client else 'Sync' }}Client,
 {% endif %}
 {# Form data if any #}
 {% if endpoint.form_body_class %}
@@ -171,3 +168,22 @@ Returns:
     Response[{{ return_string }}]
 """
 {% endmacro %}
+
+{%- macro get_2xx_response_types(ns, endpoint) -%}
+    {%- set response_types = [] -%}
+    {%- set responses2xx = [] -%}
+    {%- for response in endpoint.responses -%}
+    {%- if 200 <= response.status_code < 300 -%}
+        {%- set tmp = responses2xx.append(response) -%}
+        {%- set tmp = response_types.append(response.prop.get_type_string()) -%}
+    {%- endif -%}
+    {%- endfor -%}
+
+    {%- set ns.responses2xx = responses2xx -%}
+    {%- set response_types_len = response_types|length -%}
+    {%- if response_types|length == 1 -%}
+        {% set ns.return_string = response_types[0] %}
+    {%- else -%}
+        {% set ns.return_string = "Union[" + response_types|join(", ") + "]" %}
+    {%- endif -%}
+{%- endmacro -%}

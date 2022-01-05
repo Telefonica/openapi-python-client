@@ -1,7 +1,8 @@
 """ Contains some shared types for properties """
-from typing import Any, BinaryIO, Generic, MutableMapping, Optional, TextIO, Tuple, TypeVar, Union
+from typing import Any, BinaryIO, Callable, Generic, MutableMapping, Optional, TextIO, Tuple, TypeVar, Union
 
 import attr
+import httpx
 
 
 class Unset:
@@ -38,7 +39,68 @@ class Response(Generic[T]):
     status_code: int
     content: bytes
     headers: MutableMapping[str, str]
-    parsed: Optional[T]
+    parsed: Callable[[], T]
 
 
-__all__ = ["File", "Response", "FileJsonType"]
+class ApiError(Exception):
+    """Base class for all exceptions"""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+class ApiHTTPError(ApiError):
+    """Base class for ApiRequestError and ApiHTTPStatusError"""
+
+    def __init__(self, message: str, *, request: httpx.Request) -> None:
+        super().__init__(message)
+        self.request = request
+
+
+class ApiRequestError(ApiHTTPError):
+    """Request is unable to be completed successfully"""
+
+    def __init__(self, message: str, *, request: httpx.Request) -> None:
+        super().__init__(message, request=request)
+
+
+class ApiHTTPStatusError(ApiHTTPError):
+    """Response has a non 2xx status code"""
+
+    def __init__(self, *, response: httpx.Response) -> None:
+        message = self._create_message(response)
+        super().__init__(message, request=response._request)
+        self.status_code = response.status_code
+        self.response = response
+
+    @staticmethod
+    def _create_message(response: httpx.Response) -> str:
+        msg = f"Status code: {response.status_code}"
+        try:
+            detail = response.json().get("detail")
+        except ValueError:
+            # Response is not a JSON
+            detail = response.text
+
+        if detail:
+            msg += f" Detail: {detail}"
+
+        return msg
+
+
+class ApiResponseError(ApiError):
+    """
+    Response has an unmapped 2xx code or there is an error converting the response to
+    the data model.
+
+    It could mean that the client is not up to date and the API has not backward
+    compatible changes.
+    """
+
+    def __init__(self, message: str, *, response: httpx.Response) -> None:
+        super().__init__(message)
+        self.status_code = response.status_code
+        self.response = response
+        self.request = response._request
+
+
+__all__ = ["ApiError", "ApiHTTPError", "ApiRequestError", "ApiHTTPStatusError", "ApiResponseError", "File", "Response", "UNSET", "Unset"]
