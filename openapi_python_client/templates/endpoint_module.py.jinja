@@ -28,7 +28,7 @@ def _get_kwargs(
         {%- endfor -%}
     )
 
-    headers: Dict[str, Any] = {}
+    headers: Dict[str, str] = {}
     cookies: Dict[str, Any] = {}
 
     {{ header_params(endpoint) | indent(4) }}
@@ -42,6 +42,7 @@ def _get_kwargs(
     {{ multipart_body(endpoint) | indent(4) }}
 
     return {
+        "method": "{{ endpoint.method }}",
         "url": url,
         "headers": headers,
         "cookies": cookies,
@@ -71,13 +72,14 @@ def _parse_response(*, response: httpx.Response) -> Callable[[], {{ return_strin
             try:
                 {% for response in responses2xx %}
                 if response.status_code == {{ response.status_code }}:
-                    {% if response.prop.template %}
-                        {% from "property_templates/" + response.prop.template import construct %}
+                    {% import "property_templates/" + response.prop.template as prop_template %}
+                    {% if prop_template.construct %}
                     {% set ind = 12 if response.prop.template != "list_property.py.jinja" else 20 %}
-                    {{ construct(response.prop, response.source) | indent(ind) }}
+                    {{ prop_template.construct(response.prop, response.source) | indent(ind) }}
+                    {% else %}
                     parsed_response = {{ response.prop.name }}
                     {% else %}
-                    parsed_response = {{ response.source }}
+                    parsed_response = cast({{ response.prop.get_type_string() }}, {{ response.source }})
                     {% endif %}
                 {% endfor %}
             except Exception as e:
@@ -123,7 +125,7 @@ def sync_detailed(
     )
 
     try:
-        response = client.get_http_client().{{ endpoint.method }}(
+        response = client.get_http_client().request(
             **kwargs,
         )
     except httpx.RequestError as e:
@@ -152,7 +154,7 @@ async def asyncio_detailed(
     )
 
     try:
-        response = await client.get_http_client().{{ endpoint.method }}(
+        response = await client.get_http_client().request(
                 **kwargs
         )
     except httpx.RequestError as e:

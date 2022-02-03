@@ -250,17 +250,7 @@
         "summary": "Upload File",
         "description": "Upload a file ",
         "operationId": "upload_file_tests_upload_post",
-        "parameters": [
-          {
-            "required": false,
-            "schema": {
-              "title": "Keep-Alive",
-              "type": "boolean"
-            },
-            "name": "keep-alive",
-            "in": "header"
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -301,17 +291,7 @@
         "summary": "Upload multiple files",
         "description": "Upload several files in the same request",
         "operationId": "upload_multiple_files_tests_upload_post",
-        "parameters": [
-          {
-            "required": false,
-            "schema": {
-              "title": "Keep-Alive",
-              "type": "boolean"
-            },
-            "name": "keep-alive",
-            "in": "header"
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -1000,6 +980,49 @@
         "responses": {}
       }
     },
+    "/location/header/types": {
+      "description": "Test the valid types to send in headers.",
+      "get": {
+        "tags": [
+          "location"
+        ],
+        "parameters": [
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "name": "Boolean-Header",
+            "in": "header"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "name": "String-Header",
+            "in": "header"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "number"
+            },
+            "name": "Number-Header",
+            "in": "header"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "name": "Integer-Header",
+            "in": "header"
+          }
+        ],
+        "responses": {}
+      }
+    },
     "/naming/keywords": {
       "description": "Ensure that Python keywords are renamed properly.",
       "get": {
@@ -1285,6 +1308,16 @@
             "title": "Some String",
             "type": "string",
             "default": "some_default_string"
+          },
+          "a_datetime": {
+            "title": "A Datetime",
+            "type": "string",
+            "format": "date-time"
+          },
+          "a_date": {
+            "title": "A Date",
+            "type": "string",
+            "format": "date"
           },
           "some_number": {
             "title": "Some Number",
@@ -1696,6 +1729,15 @@
           }
         }
       },
+      "ModelWithDateTimeProperty" : {
+        "type": "object",
+        "properties": {
+          "datetime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "AnArrayOfEnum": {
         "type": "array",
         "items": {
@@ -1870,6 +1912,10 @@
       },
       "None":  {
         "type": "object"
+      },
+      "model.reference.with.Periods": {
+        "type": "object",
+        "description": "A Model with periods in its reference"
       }
     }
   }
