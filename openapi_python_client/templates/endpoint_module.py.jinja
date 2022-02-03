@@ -76,7 +76,6 @@ def _parse_response(*, response: httpx.Response) -> Callable[[], {{ return_strin
                     {% if prop_template.construct %}
                     {% set ind = 12 if response.prop.template != "list_property.py.jinja" else 20 %}
                     {{ prop_template.construct(response.prop, response.source) | indent(ind) }}
-                    {% else %}
                     parsed_response = {{ response.prop.name }}
                     {% else %}
                     parsed_response = cast({{ response.prop.get_type_string() }}, {{ response.source }})
